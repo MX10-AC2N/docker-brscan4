@@ -1,7 +1,7 @@
 FROM debian:stretch-slim
 MAINTAINER Zaxim <zaxim@me.com>
 
-RUN apt-get -y update && apt-get -y upgrade && apt-get install sane sane-utils libusb-0.1 && apt-get -y clean
+RUN apt-get -y update && apt-get -y upgrade && apt-get install -y sane sane-utils libusb-0.1 && apt-get -y clean
 
 COPY drivers /opt/brother/docker_skey/drivers
 RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
