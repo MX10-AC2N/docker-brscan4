@@ -1,20 +1,19 @@
-FROM ubuntu:16.04
-MAINTAINER Ke Zhang <plutino@gmail.com>
+FROM debian:stretch-slim
+MAINTAINER Zaxim <zaxim@me.com>
 
-RUN apt-get -y update && apt-get -y upgrade && apt-get -y clean
-RUN apt-get -y install sane sane-utils ghostscript netpbm x11-common- && apt-get -y clean
+RUN apt-get -y update && apt-get -y upgrade && apt-get install sane sane-utils libusb-0.1 && apt-get -y clean
 
-ADD drivers /opt/brother/docker_skey/drivers
+COPY drivers /opt/brother/docker_skey/drivers
 RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
 
-ADD config /opt/brother/docker_skey/config
-ADD scripts /opt/brother/docker_skey/scripts
+COPY config /opt/brother/docker_skey/config
+COPY scripts /opt/brother/docker_skey/scripts
 
 RUN cfg=`ls /opt/brother/scanner/brscan-skey/brscan-skey-*.cfg`; ln -sfn /opt/brother/docker_skey/config/brscan-skey.cfg $cfg
 
-ENV SCANNER_NAME="venus"
-ENV SCANNER_MODEL="DCP-7065DN"
-ENV SCANNER_IP_ADDRESS="192.168.1.16"
+ENV SCANNER_NAME="DCP-L2540DW"
+ENV SCANNER_MODEL="DCP-L2540DW"
+ENV SCANNER_IP_ADDRESS="192.168.2.13"
 
 #VOLUME /scans
 CMD /opt/brother/docker_skey/scripts/start.sh
