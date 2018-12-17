@@ -4,4 +4,4 @@ build:
 
 create container:
 
-    docker run -it -v /tmp:/scans -p 54925:54925/udp -p 54921:54921 zaxim/brscan4 /bin/bash
+    docker run -it -v /tmp:/scans -p 54925:54925/udp --network macvlan zaxim/brscan4 /bin/bash

@@ -5,7 +5,7 @@
 #   $2 = friendly name
 #
 
-resolution=300  # 100|150|200|300|400|600|1200|2400|4800|9600
+resolution=150  # 100|150|200|300|400|600|1200|2400|4800|9600
 papersize="letter"   # letter, legal, a4
 mode="24bit Color[Fast]"  # Black & White|Gray[Error Diffusion]|True Gray|24bit Color|24bit Color[Fast]
 
@@ -34,20 +34,16 @@ scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w 
 [[ $INTR == "true" ]] && echo "Converting to PDF ..."
 
 for pnmfile in $filename/*; do
-#   echo pnmtops  "$pnmfile"  "$pnmfile".ps
    pnmtops -dpi=$resolution -equalpixels "$pnmfile"  > "$pnmfile".ps 2> /dev/null
-#   rm -f "$pnmfile"
 done
 
-gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile="$filename".pdf $(ls "$filename"/*.ps) 
+gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile="$filename"/tmp.pdf $(ls "$filename"/*.ps) 
 
-#echo psmerge -o"$output_tmp".ps  $(ls "$output_tmp"*.ps)
-#psmerge -o"$output_tmp".ps  $(ls "$output_tmp"*.ps)
+[[ $INTR == "true" ]] && echo "OCRing PDF ..."
 
-#echo ps2pdf "$output_tmp".ps   "$output_tmp".pdf
-#ps2pdf "$output_tmp".ps   "$output_tmp".pdf
+ocrmypdf --rotate-pages --deskew "$filename"/tmp.pdf "$filename".pdf
 
-#cleanup
+[[ $INTR == "true" ]] && echo "Cleaning up ..."
 
 rm -rf $filename
 
