@@ -29,7 +29,7 @@ mkdir -p $filename
 
 [[ $INTR == "true" ]] && echo "Acquiring image(s) ..."
 
-scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o"$filename"/image_%04d > /dev/null 2>&1
+scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o"$filename"/image_%04d
 
 [[ $INTR == "true" ]] && echo "Converting to PDF ..."
 
@@ -37,7 +37,7 @@ for pnmfile in $filename/*; do
    pnmtops -dpi=$resolution -equalpixels "$pnmfile"  > "$pnmfile".ps 2> /dev/null
 done
 
-gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile="$filename"/tmp.pdf $(ls "$filename"/*.ps) 
+gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -sOutputFile="$filename"/tmp.pdf $(ls "$filename"/*.ps) 
 
 [[ $INTR == "true" ]] && echo "OCRing PDF ..."
 
