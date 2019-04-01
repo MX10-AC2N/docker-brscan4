@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 MAINTAINER Zaxim <zaxim@me.com>
 
-RUN apt-get -y update && apt-get -y upgrade && apt-get install -y sane-utils libusb-0.1 ghostscript netpbm ocrmypdf && apt-get -y clean
+RUN apt-get -y update && apt-get -y upgrade && apt-get install -y sane-utils libusb-0.1 ghostscript netpbm ocrmypdf && apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
 COPY drivers /opt/brother/docker_skey/drivers
 RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
