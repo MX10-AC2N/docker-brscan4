@@ -1,10 +1,11 @@
-FROM ubuntu:18.04
+FROM python:3.7
 MAINTAINER Zaxim <zaxim@me.com>
 
 # C.UTF-8 needed to make ocrmypdf work
 ENV SCANNER_NAME="DCP-L2540DW" SCANNER_MODEL="DCP-L2540DW" SCANNER_IP_ADDRESS="192.168.2.13" LC_ALL="C.UTF-8" LANG="C.UTF-8"
 
-RUN apt-get -y update && apt-get -y upgrade && apt-get install -y sane sane-utils libusb-0.1 ghostscript netpbm ocrmypdf && apt-get -y clean && rm -rf /var/lib/apt/lists/*
+
+RUN echo 'deb http://deb.debian.org/debian jessie-backports main' > /etc/apt/sources.list.d/backports.list && apt-get -y update && apt-get -y upgrade && apt-get install -y sane sane-utils libusb-0.1 ghostscript netpbm ocrmypdf && apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
 COPY drivers /opt/brother/docker_skey/drivers
 RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
