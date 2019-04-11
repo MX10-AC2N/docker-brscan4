@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM python:3.7-slim-stretch
 MAINTAINER Zaxim <zaxim@me.com>
 
 # C.UTF-8 needed to make ocrmypdf work
