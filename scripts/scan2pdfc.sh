@@ -5,6 +5,8 @@
 #   $2 = friendly name
 #
 
+set -x #echo on
+
 resolution=300  # 100|150|200|300|400|600|1200|2400|4800|9600
 papersize="letter"   # letter, legal, a4
 mode="24bit Color[Fast]"  # Black & White|Gray[Error Diffusion]|True Gray|24bit Color|24bit Color[Fast]
