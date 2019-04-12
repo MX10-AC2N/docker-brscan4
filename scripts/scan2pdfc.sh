@@ -31,7 +31,7 @@ mkdir -p $filename
 
 [[ $INTR == "true" ]] && echo "Acquiring image(s) ..."
 
-scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o"$filename"/image_%04d
+scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o "$filename"/image_%04d
 
 [[ $INTR == "true" ]] && echo "Converting to PDF ..."
 
