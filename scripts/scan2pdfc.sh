@@ -47,7 +47,7 @@ gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -sOutputFile="$fi
 
 [[ $INTR == "true" ]] && echo "OCRing PDF ..."
 
-ocrmypdf --rotate-pages --deskew "$filename"/tmp.pdf "$filename".pdf
+ocrmypdf --clean --rotate-pages --deskew "$filename"/tmp.pdf "$filename".pdf
 
 [[ $INTR == "true" ]] && echo "Cleaning up ..."
 
