@@ -11,15 +11,12 @@ resolution=300  # 100|150|200|300|400|600|1200|2400|4800|9600
 papersize="letter"   # letter, legal, a4
 mode="24bit Color[Fast]"  # Black & White|Gray[Error Diffusion]|True Gray|24bit Color|24bit Color[Fast]
 
-# Name sent by scanner doesn't seem to work
-# if [[ $1 == "" ]]; then
-#     device="brother4:net1;dev0"
-# else
-#     device=$1
-# fi
-# [[ $2 == "" ]] && INTR="true"
-
-device="brother4:net1;dev0"
+if [[ $1 == "" ]]; then
+    device="brother4:net1;dev0"
+else
+    device=$1
+fi
+[[ $2 == "" ]] && INTR="true"
 
 case $papersize in 
     "letter") w=215.9; h=279.4 ;;
@@ -27,7 +24,8 @@ case $papersize in
     "legal") w=215.9; h=355.6 ;;
 esac
 
-sleep  0.01
+#Wait for Scanner to wake up
+sleep  0.5
 
 filename=/scans/$(date +%F | sed s/-//g)$(date +%T | sed s/://g)
 mkdir -p $filename
