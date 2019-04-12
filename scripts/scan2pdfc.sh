@@ -25,12 +25,15 @@ case $papersize in
 esac
 
 #Wait for Scanner to wake up
-sleep  0.5
+sleep  0.01
 
 filename=/scans/$(date +%F | sed s/-//g)$(date +%T | sed s/://g)
 mkdir -p $filename
 
 [[ $INTR == "true" ]] && echo "Acquiring image(s) ..."
+
+# workaround to query scanners
+scanadf -L
 
 scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o "$filename"/image_%04d
 
