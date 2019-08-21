@@ -16,7 +16,7 @@ if [[ $1 == "" ]]; then
 else
     device=$1
 fi
-[[ $2 == "" ]] && INTR="true"
+#[[ $2 == "" ]] && INTR="true"
 
 case $papersize in 
     "letter") w=215.9; h=279.4 ;;
