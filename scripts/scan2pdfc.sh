@@ -35,9 +35,7 @@ mkdir -p $filename
 # workaround to query scanners
 scanadf -L
 
-#scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o "$filename"/image_%04d
-
-scanimage --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h --batch="$filename"/image_%04d
+scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o "$filename"/image_%04d
 
 [[ $INTR == "true" ]] && echo "Converting to PDF ..."
 
