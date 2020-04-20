@@ -1,12 +1,12 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 MAINTAINER Zaxim <zaxim@me.com>
 
 # C.UTF-8 needed to make ocrmypdf work
-ENV SCANNER_NAME="DCPL2540DW" SCANNER_MODEL="DCP-L2540DW" SCANNER_IP_ADDRESS="192.168.2.13" LC_ALL="C.UTF-8" LANG="C.UTF-8"
+ENV SCANNER_NAME="DCPL2540DW" SCANNER_MODEL="DCP-L2540DW" SCANNER_IP_ADDRESS="192.168.2.13" LC_ALL="C.UTF-8" LANG="C.UTF-8" TZ="America/New_York" DEBIAN_FRONTEND="noninteractive" 
 # Debug mode
 ENV INTR="true"
 
-RUN apt-get -y update && apt-get -y upgrade && apt-get install -y sane sane-utils libusb-0.1 ghostscript netpbm ocrmypdf python3-pip && apt-get -y clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get -y update && apt-get -y upgrade && apt-get install -y sane sane-utils libusb-0.1 ghostscript netpbm ocrmypdf python3-pip python3-wheel && apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install ocrmypdf --upgrade && rm -rf /root/.cache
 
