@@ -20,9 +20,9 @@ build:
 
 create container interactive:
 
-    docker run -it -v /tmp:/scans -p 54925:54925/udp --network macvlan zaxim/brscan4 /bin/bash
+    docker run -it -v /tmp:/scans -p 54925:54925/udp --network macvlan zaxim/docker-brscan4 /bin/bash
 
 create container service:
 
-    docker run -d -v /tmp:/scans -p 54925:54925/udp --network macvlan zaxim/brscan4 /bin/bash
+    docker run -d -v /tmp:/scans -p 54925:54925/udp --network macvlan zaxim/docker-brscan4 /bin/bash
 

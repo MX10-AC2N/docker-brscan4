@@ -31,6 +31,8 @@ COPY scripts /opt/brother/docker_skey/scripts
 
 COPY config/ /etc/opt/brother/scanner/brscan-skey/
 
+RUN mkdir -p /scans
+
 EXPOSE 54921
 EXPOSE 54925/udp
 
