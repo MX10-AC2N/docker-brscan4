@@ -31,4 +31,7 @@ COPY scripts /opt/brother/docker_skey/scripts
 
 COPY config/ /etc/opt/brother/scanner/brscan-skey/
 
+EXPOSE 54921
+EXPOSE 54925/udp
+
 CMD /opt/brother/docker_skey/scripts/start.sh
