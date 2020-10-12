@@ -25,15 +25,13 @@ RUN apt-get -y update && apt-get install -y \
 	&& apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
 COPY drivers /opt/brother/docker_skey/drivers
-RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
+RUN dpkg -i /opt/brother/docker_skey/drivers/brscan4*.deb
+RUN dpkg -i /opt/brother/docker_skey/drivers/brscan-skey*.deb
 
 COPY scripts /opt/brother/docker_skey/scripts
 
 COPY config/ /etc/opt/brother/scanner/brscan-skey/
 
 RUN mkdir -p /scans
-
-EXPOSE 54921
-EXPOSE 54925/udp
 
 CMD /opt/brother/docker_skey/scripts/start.sh

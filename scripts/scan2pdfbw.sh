@@ -12,7 +12,7 @@ fi
 [[ $INTR == "true" ]] && set -x
 
 SCANIMAGE="/opt/brother/scanner/brscan-skey/skey-scanimage"
-OUTPUT=/scans/tmp/brscan_"$(date +%Y-%m-%d-%H-%M-%S)".tif
+OUTPUT=/tmp/brscan_"$(date +%Y-%m-%d-%H-%M-%S)".tif
 OUTPUT_PDF=/scans/brscan_"$(date +%Y-%m-%d-%H-%M-%S)".pdf
 OPT_OTHER="--mode True Gray"
 
