@@ -1,16 +1,23 @@
 FROM ubuntu:20.04
-MAINTAINER Zaxim <zaxim@me.com>
+LABEL maintainer="Zaxim <1308071+Zaxim@users.noreply.github.com>"
 
-# C.UTF-8 needed to make ocrmypdf work
-ENV SCANNER_NAME="DCPL2540DW" SCANNER_MODEL="DCP-L2540DW" SCANNER_IP_ADDRESS="192.168.2.13" LC_ALL="C.UTF-8" LANG="C.UTF-8" TZ="America/New_York" DEBIAN_FRONTEND="noninteractive" 
+# Set environment variables for your scanner
+ENV SCANNER_NAME="DCPL2540DW"
+ENV SCANNER_MODEL="DCP-L2540DW"
+ENV SCANNER_IP_ADDRESS="192.168.2.13"
+ENV TZ="America/New_York"
+
+ENV LC_ALL="C.UTF-8" LANG="C.UTF-8" 
+ENV DEBIAN_FRONTEND="noninteractive" 
+
 # Debug mode
 ENV INTR="true"
 
-RUN apt-get -y update && apt-get -y upgrade && apt-get install -y sane sane-utils libusb-0.1 ghostscript netpbm ocrmypdf python3-pip python3-wheel && apt-get -y clean && rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install ocrmypdf --upgrade && rm -rf /root/.cache
-
-RUN ln -sfn /usr/local/bin/ocrmypdf /usr/bin/ocrmypdf
+RUN apt-get -y update && apt-get install -y \ 
+	sane \
+	sane-utils \
+	libusb-0.1 \
+	&& apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
 COPY drivers /opt/brother/docker_skey/drivers
 RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
