@@ -1,2 +1,4 @@
+/usr/sbin/adduser --system -m -d /scans scan_user -u $PUID
+chown -r $PUID:$PGID /scans
 /usr/bin/brsaneconfig4 -a name=$SCANNER_NAME model=$SCANNER_MODEL ip=$SCANNER_IP_ADDRESS
-/usr/bin/brscan-skey -f
+su scan_user -c "/usr/bin/brscan-skey -f"

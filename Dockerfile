@@ -7,6 +7,10 @@ ENV SCANNER_MODEL="DCP-L2540DW"
 ENV SCANNER_IP_ADDRESS="192.168.2.13"
 ENV TZ="America/New_York"
 
+# Set UID and GIDs for scanner user and file outputs
+ENV PUID="1000"
+ENV PGID="1000"
+
 ENV LC_ALL="C.UTF-8" LANG="C.UTF-8" 
 ENV DEBIAN_FRONTEND="noninteractive" 
 
@@ -17,14 +21,14 @@ RUN apt-get -y update && apt-get install -y \
 	sane \
 	sane-utils \
 	libusb-0.1 \
+	libtiff-tools \
 	&& apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
 COPY drivers /opt/brother/docker_skey/drivers
 RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
 
-COPY config /opt/brother/docker_skey/config
 COPY scripts /opt/brother/docker_skey/scripts
 
-RUN cfg=`ls /opt/brother/scanner/brscan-skey/brscan-skey-*.cfg`; ln -sfn /opt/brother/docker_skey/config/brscan-skey.cfg $cfg
+COPY config/ /etc/opt/brother/scanner/brscan-skey/
 
 CMD /opt/brother/docker_skey/scripts/start.sh

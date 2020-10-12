@@ -1,56 +1,65 @@
 #! /bin/bash
-#set +o noclobber
+# scan2ocr
 #
-#   $1 = scanner device
-#   $2 = friendly name
-#
+sleep 0.2
 
-set -x #echo on
-
-resolution=300  # 100|150|200|300|400|600|1200|2400|4800|9600
-papersize="letter"   # letter, legal, a4
-mode="24bit Color[Fast]"  # Black & White|Gray[Error Diffusion]|True Gray|24bit Color|24bit Color[Fast]
-
-if [[ $1 == "" ]]; then
-    device="brother4:net1;dev0"
-else
-    device=$1
+if [ -e ~/.brscan-skey/scantoocr.config ];then
+   source ~/.brscan-skey/scantoocr.config
+elif [ -e /etc/opt/brother/scanner/brscan-skey/scantoocr.config ];then
+   source /etc/opt/brother/scanner/brscan-skey/scantoocr.config
 fi
-#[[ $2 == "" ]] && INTR="true"
 
-case $papersize in 
-    "letter") w=215.9; h=279.4 ;;
-    "a4") w=210; h=297 ;;
-    "legal") w=215.9; h=355.6 ;;
-esac
+[[ $INTR == "true" ]] && set -x
 
-#Wait for Scanner to wake up
-sleep  0.01
+SCANIMAGE="/opt/brother/scanner/brscan-skey/skey-scanimage"
+OUTPUT=/scans/tmp/brscan_"$(date +%Y-%m-%d-%H-%M-%S)".tif
+OUTPUT_PDF=/scans/brscan_"$(date +%Y-%m-%d-%H-%M-%S)".pdf
+OPT_OTHER="--mode 24bit Color[Fast]"
 
-filename=/scans/$(date +%F | sed s/-//g)$(date +%T | sed s/://g)
-mkdir -p $filename
 
-[[ $INTR == "true" ]] && echo "Acquiring image(s) ..."
 
-# workaround to query scanners
-scanadf -L
+if [ "$resolution" != '' ];then
+   OPT_RESO="--resolution $resolution" 
+else
+   OPT_RESO="--resolution 100" 
+fi
 
-scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o "$filename"/image_%04d
+if [ "$source" != '' ];then
+   OPT_SRC="--source $source" 
+else
+   OPT_SRC="--source FB" 
+fi
 
-[[ $INTR == "true" ]] && echo "Converting to PDF ..."
+if [ "$size" != '' ];then
+   OPT_SIZE="--size $size" 
+else
+   OPT_SIZE="--size A4" 
+fi
 
-for pnmfile in $filename/*; do
-   pnmtops -dpi=$resolution -equalpixels "$pnmfile"  > "$pnmfile".ps 2> /dev/null
-done
+if [ "$duplex" = 'ON' ];then
+   OPT_DUP="--duplex"
+   OPT_SRC="--source ADF_C" 
+else
+   OPT_DUP=""
+fi
+OPT_FILE="--outputfile  $OUTPUT"
 
-gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -sOutputFile="$filename"/tmp.pdf $(ls "$filename"/*.ps) 
+OPT_DEV="--device-name $1"
 
-[[ $INTR == "true" ]] && echo "OCRing PDF ..."
+OPT="$OPT_DEV $OPT_RESO $OPT_SRC $OPT_SIZE $OPT_DUP $OPT_OTHER $OPT_FILE"
 
-ocrmypdf --clean --rotate-pages --deskew "$filename"/tmp.pdf "$filename".pdf
+if [ "$(echo "$1" | grep net)" != '' ];then
+    sleep 1
+fi
 
-[[ $INTR == "true" ]] && echo "Cleaning up ..."
+#echo  "$SCANIMAGE $OPT" 
+$SCANIMAGE $OPT
 
-rm -rf $filename
+if [ ! -e "$OUTPUT" ];then
+   sleep 1
+   $SCANIMAGE $OPT
+fi
 
-[[ $INTR == "true" ]] && echo "Done."
+tiff2pdf -n -o "$OUTPUT_PDF" "$OUTPUT"
+
+rm -f "$OUTPUT"
