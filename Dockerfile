@@ -39,6 +39,13 @@ RUN ln -sfn /opt/brother/docker_skey/config/brscan-skey.config /etc/opt/brother/
 	ln -sfn /opt/brother/docker_skey/config/brscantoimage.config /etc/opt/brother/scanner/brscan-skey/brscantoimage.config && \
 	ln -sfn /opt/brother/docker_skey/config/brscantoocr.config /etc/opt/brother/scanner/brscan-skey/brscantoocr.config
 
+RUN ln -sfn /opt/brother/docker_skey/config/brscan-skey.config /opt/brother/scanner/brscan-skey/brscan-skey.config && \
+	ln -sfn /opt/brother/docker_skey/config/brscan_mail.config /opt/brother/scanner/brscan-skey/brscan_mail.config && \
+	ln -sfn /opt/brother/docker_skey/config/brscantoemail.config /opt/brother/scanner/brscan-skey/brscantoemail.config && \
+	ln -sfn /opt/brother/docker_skey/config/brscantofile.config /opt/brother/scanner/brscan-skey/brscantofile.config && \
+	ln -sfn /opt/brother/docker_skey/config/brscantoimage.config /opt/brother/scanner/brscan-skey/brscantoimage.config && \
+	ln -sfn /opt/brother/docker_skey/config/brscantoocr.config /opt/brother/scanner/brscan-skey/brscantoocr.config
+
 RUN mkdir -p /scans
 
 CMD /opt/brother/docker_skey/scripts/start.sh
