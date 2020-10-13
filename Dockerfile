@@ -34,17 +34,17 @@ COPY config /opt/brother/docker_skey/config
 
 RUN ln -sfn /opt/brother/docker_skey/config/brscan-skey.config /etc/opt/brother/scanner/brscan-skey/brscan-skey.config && \
 	ln -sfn /opt/brother/docker_skey/config/brscan_mail.config /etc/opt/brother/scanner/brscan-skey/brscan_mail.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantoemail.config /etc/opt/brother/scanner/brscan-skey/brscantoemail.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantofile.config /etc/opt/brother/scanner/brscan-skey/brscantofile.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantoimage.config /etc/opt/brother/scanner/brscan-skey/brscantoimage.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantoocr.config /etc/opt/brother/scanner/brscan-skey/brscantoocr.config
+	ln -sfn /opt/brother/docker_skey/config/scantoemail.config /etc/opt/brother/scanner/brscan-skey/scantoemail.config && \
+	ln -sfn /opt/brother/docker_skey/config/scantofile.config /etc/opt/brother/scanner/brscan-skey/scantofile.config && \
+	ln -sfn /opt/brother/docker_skey/config/scantoimage.config /etc/opt/brother/scanner/brscan-skey/scantoimage.config && \
+	ln -sfn /opt/brother/docker_skey/config/scantoocr.config /etc/opt/brother/scanner/brscan-skey/scantoocr.config
 
 RUN ln -sfn /opt/brother/docker_skey/config/brscan-skey.config /opt/brother/scanner/brscan-skey/brscan-skey.config && \
 	ln -sfn /opt/brother/docker_skey/config/brscan_mail.config /opt/brother/scanner/brscan-skey/brscan_mail.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantoemail.config /opt/brother/scanner/brscan-skey/brscantoemail.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantofile.config /opt/brother/scanner/brscan-skey/brscantofile.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantoimage.config /opt/brother/scanner/brscan-skey/brscantoimage.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscantoocr.config /opt/brother/scanner/brscan-skey/brscantoocr.config
+	ln -sfn /opt/brother/docker_skey/config/scantoemail.config /opt/brother/scanner/brscan-skey/scantoemail.config && \
+	ln -sfn /opt/brother/docker_skey/config/scantofile.config /opt/brother/scanner/brscan-skey/scantofile.config && \
+	ln -sfn /opt/brother/docker_skey/config/scantoimage.config /opt/brother/scanner/brscan-skey/scantoimage.config && \
+	ln -sfn /opt/brother/docker_skey/config/scantoocr.config /opt/brother/scanner/brscan-skey/scantoocr.config
 
 RUN mkdir -p /scans
 
