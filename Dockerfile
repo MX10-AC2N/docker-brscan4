@@ -12,7 +12,7 @@ ENV PUID="1000"
 ENV PGID="1000"
 
 ENV LC_ALL="C.UTF-8" LANG="C.UTF-8" 
-ENV DEBIAN_FRONTEND="noninteractive" 
+ENV DEBIAN_FRONTEND="noninteractive"
 
 # Debug mode
 ENV INTR="true"
@@ -30,7 +30,14 @@ RUN dpkg -i /opt/brother/docker_skey/drivers/brscan-skey*.deb
 
 COPY scripts /opt/brother/docker_skey/scripts
 
-COPY config/ /etc/opt/brother/scanner/brscan-skey/
+COPY config /opt/brother/docker_skey/config
+
+RUN ln -sfn /opt/brother/docker_skey/config/brscan-skey.config /etc/opt/brother/scanner/brscan-skey/brscan-skey.config && \
+	/opt/brother/docker_skey/config/brscan_mail.config /etc/opt/brother/scanner/brscan-skey/brscan_mail.config && \
+	/opt/brother/docker_skey/config/brscantoemail.config /etc/opt/brother/scanner/brscan-skey/brscantoemail.config && \
+	/opt/brother/docker_skey/config/brscantofile.config /etc/opt/brother/scanner/brscan-skey/brscantofile.config && \
+	/opt/brother/docker_skey/config/brscantoimage.config /etc/opt/brother/scanner/brscan-skey/brscantoimage.config && \
+	/opt/brother/docker_skey/config/brscantoocr.config /etc/opt/brother/scanner/brscan-skey/brscantoocr.config
 
 RUN mkdir -p /scans
 
