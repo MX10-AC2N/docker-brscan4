@@ -2,7 +2,7 @@
 
 Forked from plutino/docker-brscan4. *Thanks for seting up the framework*
 
-This container sets up linux based network scanning using brscan-skey and brscan4 for the Brother DCP-L2540DW multi-function printer/scanner. Scans are dropped in the `scans` directory. If you use the OCR option, it uses the amazing ocrmypdf tool.
+This container sets up linux based network scanning using brscan-skey and brscan4 for the Brother DCP-L2540DW multi-function printer/scanner. Scans are dropped in the `scans` directory. ~~If you use the OCR option, it uses the amazing ocrmypdf tool.~~ *Removed ocrmypdf because I use a watch folder and standalone [ocrmypdf docker image](https://hub.docker.com/r/jbarlow83/ocrmypdf/)*
 
 The latest brothers drivers  are found in the `drivers` directory (Allowed by their license).
 
