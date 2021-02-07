@@ -1,54 +1,65 @@
 #! /bin/bash
-#set +o noclobber
+# scan2ocr
 #
-#   $1 = scanner device
-#   $2 = friendly name
-#
+sleep 0.2
 
-resolution=300  # 100|150|200|300|400|600|1200|2400|4800|9600
-papersize="letter"   # letter, legal, a4
-mode="Gray[Error Diffusion]"  # Black & White|Gray[Error Diffusion]|True Gray|24bit Color|24bit Color[Fast]
-
-if [[ $1 == "" ]]; then
-    device="brother4:net1;dev0"
-else
-    device=$1
+if [ -e ~/.brscan-skey/scantofile.config ];then
+   source ~/.brscan-skey/scantofile.config
+elif [ -e /etc/opt/brother/scanner/brscan-skey/scantofile.config ];then
+   source /etc/opt/brother/scanner/brscan-skey/scantofile.config
 fi
-[[ $2 == "" ]] && INTR="true"
 
-case $papersize in 
-    "letter") w=215.9; h=279.4 ;;
-    "a4") w=210; h=297 ;;
-    "legal") w=215.9; h=355.6 ;;
-esac
+[[ $INTR == "true" ]] && set -x
 
-sleep  0.01
+SCANIMAGE="/opt/brother/scanner/brscan-skey/skey-scanimage"
+OUTPUT=/tmp/brscan_"$(date +%Y-%m-%d-%H-%M-%S)".tif
+OUTPUT_PDF=/scans/brscan_"$(date +%Y-%m-%d-%H-%M-%S)".pdf
+OPT_OTHER="--mode 24bit Color[Fast]"
 
-filename=/scans/$(date +%F | sed s/-//g)$(date +%T | sed s/://g)
-mkdir -p $filename
 
-[[ $INTR == "true" ]] && echo "Acquiring image(s) ..."
 
-scanadf --device-name "$device" --resolution "$resolution" --mode "$mode" -x $w -y $h -o"$filename"/image_%04d > /dev/null 2>&1
+if [ "$resolution" != '' ];then
+   OPT_RESO="--resolution $resolution" 
+else
+   OPT_RESO="--resolution 100" 
+fi
 
-[[ $INTR == "true" ]] && echo "Converting to PDF ..."
+if [ "$source" != '' ];then
+   OPT_SRC="--source $source" 
+else
+   OPT_SRC="--source FB" 
+fi
 
-for pnmfile in $filename/*; do
-#   echo pnmtops  "$pnmfile"  "$pnmfile".ps
-   pnmtops -dpi=$resolution -equalpixels "$pnmfile"  > "$pnmfile".ps 2> /dev/null
-#   rm -f "$pnmfile"
-done
+if [ "$size" != '' ];then
+   OPT_SIZE="--size $size" 
+else
+   OPT_SIZE="--size A4" 
+fi
 
-gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile="$filename".pdf $(ls "$filename"/*.ps) 
+if [ "$duplex" = 'ON' ];then
+   OPT_DUP="--duplex"
+   OPT_SRC="--source ADF_C" 
+else
+   OPT_DUP=""
+fi
+OPT_FILE="--outputfile  $OUTPUT"
 
-#echo psmerge -o"$output_tmp".ps  $(ls "$output_tmp"*.ps)
-#psmerge -o"$output_tmp".ps  $(ls "$output_tmp"*.ps)
+OPT_DEV="--device-name $1"
 
-#echo ps2pdf "$output_tmp".ps   "$output_tmp".pdf
-#ps2pdf "$output_tmp".ps   "$output_tmp".pdf
+OPT="$OPT_DEV $OPT_RESO $OPT_SRC $OPT_SIZE $OPT_DUP $OPT_OTHER $OPT_FILE"
 
-#cleanup
+if [ "$(echo "$1" | grep net)" != '' ];then
+    sleep 1
+fi
 
-rm -rf $filename
+#echo  "$SCANIMAGE $OPT" 
+$SCANIMAGE $OPT
 
-[[ $INTR == "true" ]] && echo "Done."
+if [ ! -e "$OUTPUT" ];then
+   sleep 1
+   $SCANIMAGE $OPT
+fi
+
+tiff2pdf -n -o "$OUTPUT_PDF" "$OUTPUT"
+
+rm -f "$OUTPUT"
