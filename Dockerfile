@@ -1,11 +1,11 @@
 FROM ubuntu:20.04
-LABEL maintainer="Zaxim <1308071+Zaxim@users.noreply.github.com>"
+LABEL maintainer="MX10-AC2N"
 
 # Set environment variables for your scanner
-ENV SCANNER_NAME="DCPL2540DW"
-ENV SCANNER_MODEL="DCP-L2540DW"
-ENV SCANNER_IP_ADDRESS="192.168.2.13"
-ENV TZ="America/New_York"
+ENV SCANNER_NAME="DCP-7060D"
+ENV SCANNER_MODEL="DCP-7060D"
+ENV SCANNER_IP_ADDRESS="192.168.1.200"
+ENV TZ="Paris/France"
 
 # Set UID and GIDs for scanner user and file outputs
 ENV PUID="1000"
