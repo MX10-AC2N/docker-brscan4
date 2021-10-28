@@ -25,8 +25,7 @@ RUN apt-get -y update && apt-get install -y \
 	&& apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
 COPY drivers /opt/brother/docker_skey/drivers
-RUN dpkg -i /opt/brother/docker_skey/drivers/brscan4*.deb
-RUN dpkg -i /opt/brother/docker_skey/drivers/brscan-skey*.deb
+RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
 
 COPY scripts /opt/brother/docker_skey/scripts
 
