@@ -1,9 +1,9 @@
-name: 🤖Auto-update Brother drivers (monthly check)
+name: 🤖Auto-update Brother drivers .deb files (monthly)
 
 on:
   schedule:
     - cron: '0 5 1 * *'          # 1er du mois à 05:00 UTC
-  workflow_dispatch:             # Lancement manuel
+  workflow_dispatch:             # Lancement manuel depuis l'interface
 
 jobs:
   check-and-update:
@@ -15,95 +15,142 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install tools
+      - name: Install required tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y curl grep sed coreutils
+          sudo apt-get install -y curl dpkg grep sed coreutils
 
-      - name: List .deb files in drivers
+      - name: List .deb files in drivers/
         id: list-debs
         run: |
-          DEBS=$(ls -1 drivers/*.deb 2>/dev/null || echo "")
-          echo "debs=$DEBS" >> $GITHUB_OUTPUT
-          echo "Fichiers .deb trouvés : $DEBS"
+          DEBS=$(ls -1 drivers/*.deb 2>/dev/null || true)
+          if [ -z "$DEBS" ]; then
+            echo "Aucun fichier .deb trouvé dans drivers/"
+          else
+            echo "Fichiers trouvés :"
+            echo "$DEBS"
+          fi
+          # Sauvegarde multi-ligne safe pour GitHub Actions
+          echo "debs<<EOF" >> $GITHUB_OUTPUT
+          echo "$DEBS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Check and update each driver
+      - name: Check for newer versions and update .deb files
+        id: update
         run: |
           UPDATED=false
-          for deb in ${{ steps.list-debs.outputs.debs }}; do
-            echo "Traitement de $deb"
-            
-            # Extrait name (ex. brscan4 ou brscan-skey) et version (ex. 0.4.11-1)
-            name=$(basename "$deb" | sed -E 's/-[0-9.]+-[0-9]+.*\.deb//')
-            current_version=$(basename "$deb" | grep -oP '[0-9.]+-[0-9]+' | head -1)
-            arch=$(basename "$deb" | grep -oP '\.amd64\.deb' | sed 's/\.//g')
-            
-            echo "  Driver: $name, Version actuelle: $current_version, Arch: $arch"
-            
+
+          echo "${{ steps.list-debs.outputs.debs }}" | while IFS= read -r deb_file; do
+            if [ -z "$deb_file" ] || [ ! -f "$deb_file" ]; then
+              continue
+            fi
+
+            echo "────────────────────────────────────────"
+            echo "Traitement : $deb_file"
+
+            # Extraction fiable via dpkg-deb
+            pkg_name=\( (dpkg-deb --show --showformat=' \){Package}' "$deb_file" 2>/dev/null || basename "$deb_file" | sed 's/-.*//')
+            current_version=\( (dpkg-deb --show --showformat=' \){Version}' "$deb_file" 2>/dev/null || echo "unknown")
+            arch=\( (dpkg-deb --show --showformat=' \){Architecture}' "$deb_file" 2>/dev/null || basename "$deb_file" | grep -oE '(amd64|all|i386)' || echo "amd64")
+
+            if [ "$current_version" = "unknown" ]; then
+              echo "  Échec extraction version avec dpkg-deb → skip ce fichier"
+              continue
+            fi
+
+            echo "  Paquet détecté     : $pkg_name"
+            echo "  Version actuelle   : $current_version"
+            echo "  Architecture       : $arch"
+
             latest_version=""
             latest_url=""
-            
-            case "$name" in
+
+            # Configuration par type de driver
+            case "$pkg_name" in
               brscan4)
-                # Patterns pour brscan4
-                base_urls=("https://download.brother.com/welcome/dlf105200/" "https://download.brother.com/welcome/dlf105203/" "https://download.brother.com/welcome/dlf006645/")
-                candidates=("0.4.11-1" "0.4.12-1" "0.4.13-1" "0.5.0-1" "0.5.1-1")  # Étends si besoin
+                base_urls=(
+                  "https://download.brother.com/welcome/dlf105200/"
+                  "https://download.brother.com/welcome/dlf105203/"
+                  "https://download.brother.com/welcome/dlf006645/"
+                )
+                candidates=("0.4.11-1" "0.4.12-1" "0.4.13-1" "0.5.0-1" "0.5.1-1")
+                filename_pattern="brscan4-%s.${arch}.deb"
                 ;;
               brscan-skey)
-                # Patterns pour brscan-skey (basé sur recherches 2026)
-                base_urls=("https://download.brother.com/welcome/dlf006652/" "https://download.brother.com/welcome/dlf105204/")  # Ajoute si plus
-                candidates=("0.3.2-0" "0.3.3-0" "0.3.4-0" "0.3.5-0" "0.4.0-0")  # Dernière connue \~0.3.4
+                base_urls=(
+                  "https://download.brother.com/welcome/dlf006652/"
+                  "https://download.brother.com/welcome/dlf105204/"
+                )
+                candidates=("0.3.1-2" "0.3.2-0" "0.3.3-0" "0.3.4-0" "0.3.5-0")
+                filename_pattern="brscan-skey-%s.${arch}.deb"
                 ;;
-              *)  # Pour d'autres drivers, ajoute des cases ici (ex. brother-dcpl2540dw-cups-driver)
-                echo "  Driver non géré : $name → skip"
+              brother-udev-rule-type1)
+                base_urls=(
+                  "https://download.brother.com/welcome/dlf006893/"
+                  "https://download.brother.com/welcome/dlf006894/"
+                )
+                candidates=("1.0.2-0" "1.0.3-0" "1.1.0-0")
+                filename_pattern="brother-udev-rule-type1-%s.${arch}.deb"
+                ;;
+              *)
+                echo "  → Type de driver non géré dans le case → skip"
                 continue
                 ;;
             esac
-            
-            # Teste les candidates en commençant par la plus récente
-            for candidate in "${candidates[@]}" reversed; do  # Inverse pour tester plus récentes d'abord
-              for base in "${base_urls[@]}"; do
-                url="\( {base} \){name}-\( {candidate}. \){arch}.deb"
-                http_code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
-                if [ "$http_code" = "200" ] && [ "$candidate" != "$current_version" ]; then
-                  latest_version="$candidate"
-                  latest_url="$url"
-                  echo "  Nouvelle version trouvée : $latest_version via $latest_url"
-                  break 2  # Sort des deux boucles
+
+            # Recherche de la version la plus récente disponible
+            for candidate in "${candidates[@]}"; do
+              for base_url in "${base_urls[@]}"; do
+                candidate_url="\( {base_url} \)(printf "$filename_pattern" "$candidate")"
+                http_code=$(curl -s -o /dev/null -w "%{http_code}" "$candidate_url")
+                if [ "$http_code" = "200" ]; then
+                  if [ "$candidate" != "$current_version" ]; then
+                    latest_version="$candidate"
+                    latest_url="$candidate_url"
+                    echo "  → Version plus récente trouvée : $latest_version"
+                    echo "     URL : $latest_url"
+                    break 2
+                  else
+                    echo "  → Version actuelle déjà la plus récente ($current_version)"
+                    break 2
+                  fi
                 fi
               done
             done
-            
+
+            # Mise à jour si trouvé
             if [ -n "$latest_version" ]; then
-              # Télécharge et remplace
               cd drivers
-              rm -f "$(basename "$deb")"  # Supprime ancien
-              curl -fSL -O "$latest_url"
+              old_filename=$(basename "$deb_file")
+              rm -f "$old_filename"
+              echo "  → Téléchargement : $latest_url"
+              curl -fSL -O "$latest_url" || { echo "Échec du téléchargement → abandon"; exit 1; }
               cd ..
               UPDATED=true
-              echo "  Mise à jour appliquée pour $name : $current_version → $latest_version"
+              echo "  → Mise à jour effectuée : $old_filename → $(basename "$latest_url")"
             else
-              echo "  Pas de mise à jour pour $name"
+              echo "  → Aucune version plus récente détectée"
             fi
           done
-          
+
           echo "updated=$UPDATED" >> $GITHUB_OUTPUT
 
-      - name: Commit, tag and push if updated
-        if: steps.check-and-update.outputs.updated == 'true'
+      - name: Commit changes, create tag and push (if updated)
+        if: steps.update.outputs.updated == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          
+
           git add drivers/*.deb
-          git commit -m "chore: auto-update Brother drivers .deb files"
-          
-          # Tag avec la date ou une version générique (ex. v$(date +%Y%m%d))
-          git tag "v-driver-update-$(date +%Y%m%d)"
-          
+          git commit -m "chore: auto-update Brother .deb drivers (newer versions found)"
+
+          # Création d'un tag daté
+          TAG_NAME="driver-update-$(date +%Y%m%d-%H%M%S)"
+          git tag "$TAG_NAME"
+
           git push origin HEAD:${{ github.ref_name || 'master' }}
           git push origin --tags
-          
-          echo "Mises à jour committées et poussées."
+
+          echo "Mises à jour committées et tag $TAG_NAME créé/poussé."
