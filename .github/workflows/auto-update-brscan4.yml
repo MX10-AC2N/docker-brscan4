@@ -1,4 +1,4 @@
-name: Auto-update brscan4 version (monthly check)
+name: 🤖 Auto-update brscan4 version (monthly check)
 
 on:
   schedule:
