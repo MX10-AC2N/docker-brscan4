@@ -3,7 +3,7 @@
 # Étape 1 : Builder - Télécharge et extrait le .deb officiel Brother
 FROM --platform=linux/amd64 debian:bookworm-slim AS builder
 
-ARG BRSCAN4_VERSION="0.4.11-1"
+ARG BRSCAN4_VERSION="0.4.11"
 ARG BRSCAN4_URL="https://download.brother.com/welcome/dlf105200/brscan4-${BRSCAN4_VERSION}.amd64.deb"
 
 RUN set -eux; \
