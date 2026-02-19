@@ -1,7 +1,7 @@
 # docker-brscan4
 
 ![Docker Image Size](https://img.shields.io/docker/image-size/mx10ac2n/docker-brscan4/latest?label=amd64%20size)
-![Docker Pulls](https://img.shields.io/docker/pulls/mx10ac2n/docker-brscan4)
+
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/MX10-AC2N/docker-brscan4/auto-update-brscan4.yml?label=monthly%20update%20check)
 
 Container Docker léger (~100 Mo) pour le backend SANE **brscan4** de Brother (scanner réseau).
