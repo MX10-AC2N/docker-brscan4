@@ -15,6 +15,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Make script executable
+        run: chmod +x scripts/update-drivers.sh
+
       - name: Install dependencies
         run: sudo apt-get update -qq && sudo apt-get install -y curl dpkg
 
