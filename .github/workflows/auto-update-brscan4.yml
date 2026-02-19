@@ -2,8 +2,8 @@ name: Auto-update brscan4 version (monthly check)
 
 on:
   schedule:
-    - cron: '0 5 1 * *'          # 1er jour du mois à 05:00 UTC → une fois par mois
-  workflow_dispatch:             # Permet de lancer manuellement depuis GitHub
+    - cron: '0 5 1 * *'          # 1er du mois à 05:00 UTC → une fois par mois
+  workflow_dispatch:             # Lancement manuel possible
 
 jobs:
   check-and-update:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0           # Nécessaire pour pouvoir commiter et pusher
+          fetch-depth: 0
 
       - name: Install required tools
         run: |
@@ -34,13 +34,11 @@ jobs:
       - name: Detect latest available brscan4 version
         id: detect
         run: |
-          # Liste des URLs les plus courantes / récentes pour brscan4 amd64 deb
-          # (ajoute-en si tu en trouves d'autres via support.brother.com)
+          # URLs connues pour brscan4 amd64 deb (ajoute si tu en trouves d'autres)
           URLS=(
             "https://download.brother.com/welcome/dlf105200/brscan4-0.4.11-1.amd64.deb"
             "https://download.brother.com/welcome/dlf105203/brscan4-0.4.11-1.amd64.deb"
             "https://download.brother.com/welcome/dlf105201/brscan4-0.4.11-1.amd64.deb"
-            # Si Brother sort une 0.4.12 ou 0.5.0, ajoute manuellement ici ou adapte le pattern
           )
 
           LATEST_VERSION=""
@@ -49,19 +47,18 @@ jobs:
           for url in "${URLS[@]}"; do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$url")
             if [ "$HTTP_CODE" = "200" ]; then
-              # Extrait la version du nom de fichier dans l'URL
               VERSION=$(echo "$url" | grep -oP 'brscan4-\K[\d.]+(?=-[0-9]+\.amd64\.deb)')
               if [ -n "$VERSION" ]; then
                 LATEST_VERSION="$VERSION"
                 LATEST_URL="$url"
-                echo "Version trouvée : $VERSION (via $url)"
+                echo "Version trouvée : $VERSION via $url"
                 break
               fi
             fi
           done
 
           if [ -z "$LATEST_VERSION" ]; then
-            echo "Aucune version valide trouvée → pas de mise à jour."
+            echo "Aucune version valide trouvée."
             echo "latest_version=" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -69,16 +66,13 @@ jobs:
           echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
           echo "latest_url=$LATEST_URL" >> $GITHUB_OUTPUT
 
-      - name: Compare and update if newer version detected
+      - name: Update version file if newer
         if: steps.detect.outputs.latest_version != '' && steps.detect.outputs.latest_version != steps.current.outputs.current_version
         run: |
-          echo "Nouvelle version détectée !"
-          echo "  Ancienne : ${{ steps.current.outputs.current_version }}"
-          echo "  Nouvelle : ${{ steps.detect.outputs.latest_version }}"
-
+          echo "Nouvelle version détectée ! Ancienne: ${{ steps.current.outputs.current_version }} → Nouvelle: ${{ steps.detect.outputs.latest_version }}"
           echo "${{ steps.detect.outputs.latest_version }}" > BRSCAN4_VERSION
 
-      - name: Commit and push update (if changed)
+      - name: Commit, tag and push if updated
         if: steps.detect.outputs.latest_version != '' && steps.detect.outputs.latest_version != steps.current.outputs.current_version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -87,8 +81,12 @@ jobs:
           git config user.email "actions@github.com"
 
           git add BRSCAN4_VERSION
-          git commit -m "chore: update brscan4 version to ${{ steps.detect.outputs.latest_version }} (auto-detected)"
+          git commit -m "chore: update brscan4 to ${{ steps.detect.outputs.latest_version }} (auto-detected)"
+
+          # Création du tag Git (ex. v0.4.12 si version=0.4.12)
+          git tag "v${{ steps.detect.outputs.latest_version }}"
 
           git push origin HEAD:${{ github.ref_name || 'master' }}
+          git push origin "v${{ steps.detect.outputs.latest_version }}"
 
-          echo "Mise à jour committée et poussée → le build Docker devrait se déclencher automatiquement si tu as un workflow build."
+          echo "Commit + tag v${{ steps.detect.outputs.latest_version }} poussés."
