@@ -1,24 +1,16 @@
 # syntax=docker/dockerfile:1
 
-# Étape builder : télécharge et extrait le driver Brother
+# Étape builder : extrait le driver Brother depuis le .deb local
 FROM debian:bookworm-slim AS builder
 
 ARG BRSCAN4_VERSION
 
+COPY drivers/brscan4-${BRSCAN4_VERSION}.amd64.deb /tmp/brscan4.deb
+
 RUN set -eux && \
-    apt-get update -qq && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl && \
     mkdir -p /extract && \
-    # Essaie plusieurs miroirs/numéros DL connus
-    ( curl -fSL -o /tmp/brscan4.deb "https://download.brother.com/welcome/dlf105200/brscan4-${BRSCAN4_VERSION}.amd64.deb" || \
-      curl -fSL -o /tmp/brscan4.deb "https://download.brother.com/welcome/dlf105203/brscan4-${BRSCAN4_VERSION}.amd64.deb" || \
-      { echo "Échec du téléchargement de brscan4 ${BRSCAN4_VERSION} sur les URLs connues"; exit 1; } ) && \
     dpkg-deb -x /tmp/brscan4.deb /extract && \
-    rm -f /tmp/brscan4.deb && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*;
+    rm -f /tmp/brscan4.deb
 
 # Image finale
 FROM debian:bookworm-slim
@@ -64,17 +56,16 @@ RUN set -eux && \
     ln -sfn /opt/brother/docker_skey/config/brscan-skey.config \
             /etc/opt/brother/scanner/brscan-skey/brscan-skey.config 2>/dev/null || true
 
-# Copie tes dossiers personnalisés (supprime les lignes si les dossiers n'existent pas)
+# Copie tes dossiers personnalisés
 COPY scripts/      /opt/brother/docker_skey/scripts/
 COPY config/       /opt/brother/docker_skey/config/
-# COPY drivers/    /opt/brother/docker_skey/drivers/   # optionnel
 
 # Création utilisateur non-root (idempotente)
 ARG PUID=1000
 ARG PGID=1000
 RUN if [ "${PUID}" != "0" ]; then \
         getent group  scanner >/dev/null || groupadd -g "${PGID}" scanner; \
-        getent passwd scanner >/dev/null || useradd -u "\( {PUID}" -g " \){PGID}" -m -s /bin/false scanner; \
+        getent passwd scanner >/dev/null || useradd -u "${PUID}" -g "${PGID}" -m -s /bin/false scanner; \
     fi
 
 # Copie l'entrypoint
