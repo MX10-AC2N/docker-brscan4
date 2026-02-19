@@ -1,0 +1,109 @@
+name: Auto-update Brother drivers (monthly check)
+
+on:
+  schedule:
+    - cron: '0 5 1 * *'          # 1er du mois à 05:00 UTC
+  workflow_dispatch:             # Lancement manuel
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y curl grep sed coreutils
+
+      - name: List .deb files in drivers
+        id: list-debs
+        run: |
+          DEBS=$(ls -1 drivers/*.deb 2>/dev/null || echo "")
+          echo "debs=$DEBS" >> $GITHUB_OUTPUT
+          echo "Fichiers .deb trouvés : $DEBS"
+
+      - name: Check and update each driver
+        run: |
+          UPDATED=false
+          for deb in ${{ steps.list-debs.outputs.debs }}; do
+            echo "Traitement de $deb"
+            
+            # Extrait name (ex. brscan4 ou brscan-skey) et version (ex. 0.4.11-1)
+            name=$(basename "$deb" | sed -E 's/-[0-9.]+-[0-9]+.*\.deb//')
+            current_version=$(basename "$deb" | grep -oP '[0-9.]+-[0-9]+' | head -1)
+            arch=$(basename "$deb" | grep -oP '\.amd64\.deb' | sed 's/\.//g')
+            
+            echo "  Driver: $name, Version actuelle: $current_version, Arch: $arch"
+            
+            latest_version=""
+            latest_url=""
+            
+            case "$name" in
+              brscan4)
+                # Patterns pour brscan4
+                base_urls=("https://download.brother.com/welcome/dlf105200/" "https://download.brother.com/welcome/dlf105203/" "https://download.brother.com/welcome/dlf006645/")
+                candidates=("0.4.11-1" "0.4.12-1" "0.4.13-1" "0.5.0-1" "0.5.1-1")  # Étends si besoin
+                ;;
+              brscan-skey)
+                # Patterns pour brscan-skey (basé sur recherches 2026)
+                base_urls=("https://download.brother.com/welcome/dlf006652/" "https://download.brother.com/welcome/dlf105204/")  # Ajoute si plus
+                candidates=("0.3.2-0" "0.3.3-0" "0.3.4-0" "0.3.5-0" "0.4.0-0")  # Dernière connue \~0.3.4
+                ;;
+              *)  # Pour d'autres drivers, ajoute des cases ici (ex. brother-dcpl2540dw-cups-driver)
+                echo "  Driver non géré : $name → skip"
+                continue
+                ;;
+            esac
+            
+            # Teste les candidates en commençant par la plus récente
+            for candidate in "${candidates[@]}" reversed; do  # Inverse pour tester plus récentes d'abord
+              for base in "${base_urls[@]}"; do
+                url="\( {base} \){name}-\( {candidate}. \){arch}.deb"
+                http_code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+                if [ "$http_code" = "200" ] && [ "$candidate" != "$current_version" ]; then
+                  latest_version="$candidate"
+                  latest_url="$url"
+                  echo "  Nouvelle version trouvée : $latest_version via $latest_url"
+                  break 2  # Sort des deux boucles
+                fi
+              done
+            done
+            
+            if [ -n "$latest_version" ]; then
+              # Télécharge et remplace
+              cd drivers
+              rm -f "$(basename "$deb")"  # Supprime ancien
+              curl -fSL -O "$latest_url"
+              cd ..
+              UPDATED=true
+              echo "  Mise à jour appliquée pour $name : $current_version → $latest_version"
+            else
+              echo "  Pas de mise à jour pour $name"
+            fi
+          done
+          
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+
+      - name: Commit, tag and push if updated
+        if: steps.check-and-update.outputs.updated == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          git add drivers/*.deb
+          git commit -m "chore: auto-update Brother drivers .deb files"
+          
+          # Tag avec la date ou une version générique (ex. v$(date +%Y%m%d))
+          git tag "v-driver-update-$(date +%Y%m%d)"
+          
+          git push origin HEAD:${{ github.ref_name || 'master' }}
+          git push origin --tags
+          
+          echo "Mises à jour committées et poussées."
