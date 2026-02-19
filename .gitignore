@@ -1,2 +1,22 @@
-/pkg
+# Secrets et config locale
+.env
+*.env.local
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Dossier package local (ancien)
+/pkg
+
+# Logs
+*.log
+logs/
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+
