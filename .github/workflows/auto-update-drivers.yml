@@ -3,7 +3,7 @@ name: 🤖Auto-update Brother drivers .deb files (monthly)
 on:
   schedule:
     - cron: '0 5 1 * *'          # 1er du mois à 05:00 UTC
-  workflow_dispatch:             # Lancement manuel depuis l'interface
+  workflow_dispatch:             # Lancement manuel
 
 jobs:
   check-and-update:
@@ -30,7 +30,6 @@ jobs:
             echo "Fichiers trouvés :"
             echo "$DEBS"
           fi
-          # Sauvegarde multi-ligne safe pour GitHub Actions
           echo "debs<<EOF" >> $GITHUB_OUTPUT
           echo "$DEBS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -38,6 +37,8 @@ jobs:
       - name: Check for newer versions and update .deb files
         id: update
         run: |
+          set -euo pipefail
+
           UPDATED=false
 
           echo "${{ steps.list-debs.outputs.debs }}" | while IFS= read -r deb_file; do
@@ -54,8 +55,8 @@ jobs:
             arch=\( (dpkg-deb --show --showformat=' \){Architecture}' "$deb_file" 2>/dev/null || basename "$deb_file" | grep -oE '(amd64|all|i386)' || echo "amd64")
 
             if [ "$current_version" = "unknown" ]; then
-              echo "  Échec extraction version avec dpkg-deb → skip ce fichier"
-              continue
+              echo "  Échec extraction version avec dpkg-deb → fallback sur nom de fichier"
+              current_version=$(basename "$deb_file" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+-[0-9]+' || echo "unknown")
             fi
 
             echo "  Paquet détecté     : $pkg_name"
@@ -65,7 +66,7 @@ jobs:
             latest_version=""
             latest_url=""
 
-            # Configuration par type de driver
+            # Configuration par driver
             case "$pkg_name" in
               brscan4)
                 base_urls=(
@@ -73,13 +74,14 @@ jobs:
                   "https://download.brother.com/welcome/dlf105203/"
                   "https://download.brother.com/welcome/dlf006645/"
                 )
-                candidates=("0.4.11-1" "0.4.12-1" "0.4.13-1" "0.5.0-1" "0.5.1-1")
+                candidates=("0.4.11-1" "0.4.12-1" "0.4.13-1" "0.5.0-1")
                 filename_pattern="brscan4-%s.${arch}.deb"
                 ;;
               brscan-skey)
                 base_urls=(
                   "https://download.brother.com/welcome/dlf006652/"
                   "https://download.brother.com/welcome/dlf105204/"
+                  "https://download.brother.com/welcome/dlf006649/"
                 )
                 candidates=("0.3.1-2" "0.3.2-0" "0.3.3-0" "0.3.4-0" "0.3.5-0")
                 filename_pattern="brscan-skey-%s.${arch}.deb"
@@ -93,12 +95,12 @@ jobs:
                 filename_pattern="brother-udev-rule-type1-%s.${arch}.deb"
                 ;;
               *)
-                echo "  → Type de driver non géré dans le case → skip"
+                echo "  → Type de driver non géré → skip"
                 continue
                 ;;
             esac
 
-            # Recherche de la version la plus récente disponible
+            # Recherche de version plus récente
             for candidate in "${candidates[@]}"; do
               for base_url in "${base_urls[@]}"; do
                 candidate_url="\( {base_url} \)(printf "$filename_pattern" "$candidate")"
@@ -124,7 +126,7 @@ jobs:
               old_filename=$(basename "$deb_file")
               rm -f "$old_filename"
               echo "  → Téléchargement : $latest_url"
-              curl -fSL -O "$latest_url" || { echo "Échec du téléchargement → abandon"; exit 1; }
+              curl -fSL -O "$latest_url" || { echo "Échec téléchargement → abandon"; exit 1; }
               cd ..
               UPDATED=true
               echo "  → Mise à jour effectuée : $old_filename → $(basename "$latest_url")"
@@ -146,7 +148,6 @@ jobs:
           git add drivers/*.deb
           git commit -m "chore: auto-update Brother .deb drivers (newer versions found)"
 
-          # Création d'un tag daté
           TAG_NAME="driver-update-$(date +%Y%m%d-%H%M%S)"
           git tag "$TAG_NAME"
 
