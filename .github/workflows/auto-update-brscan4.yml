@@ -1,0 +1,96 @@
+name: Auto-update brscan4 version
+
+on:
+  schedule:
+    - cron: '0 5 * * 0'          # tous les dimanches à 5h UTC (\~6h France)
+  workflow_dispatch:             # permet de lancer manuellement depuis l'interface GitHub
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           # nécessaire pour commiter/pusher après
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl grep sed jq coreutils
+
+      - name: Get current version from Dockerfile
+        id: current
+        run: |
+          if grep -q 'ARG BRSCAN4_VERSION=' Dockerfile; then
+            CURRENT_VERSION=$(grep 'ARG BRSCAN4_VERSION=' Dockerfile | sed 's/.*="//; s/".*//')
+          else
+            CURRENT_VERSION="unknown"
+          fi
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Version actuelle dans Dockerfile : $CURRENT_VERSION"
+
+      - name: Try to detect latest brscan4 version
+        id: latest
+        run: |
+          # Liste des liens connus (les plus courants pour brscan4 amd64 deb)
+          # On peut en ajouter si on en trouve d'autres
+          URLS=(
+            "https://download.brother.com/welcome/dlf105200/brscan4-0.4.11-1.amd64.deb"
+            "https://download.brother.com/welcome/dlf105203/brscan4-0.4.11-1.amd64.deb"
+            "https://download.brother.com/welcome/dlf006645/brscan4-0.4.11-1.amd64.deb"   # ancien
+          )
+
+          LATEST_VERSION=""
+          LATEST_URL=""
+
+          for url in "${URLS[@]}"; do
+            if curl -s -o /dev/null -w "%{http_code}" "$url" | grep -q "200"; then
+              # Extrait la version du nom de fichier dans l'URL
+              version=$(echo "$url" | grep -oP 'brscan4-\K[0-9.]+(?=-[0-9]+\.amd64\.deb)')
+              if [ -n "$version" ]; then
+                LATEST_VERSION="$version"
+                LATEST_URL="$url"
+                echo "Version trouvée : $version via $url"
+                break
+              fi
+            fi
+          done
+
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Aucune version valide trouvée sur les URLs connues → on arrête ici."
+            echo "latest_version=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "latest_url=$LATEST_URL" >> $GITHUB_OUTPUT
+
+      - name: Compare versions
+        if: steps.latest.outputs.latest_version != '' && steps.latest.outputs.latest_version != steps.current.outputs.current_version
+        run: |
+          echo "Mise à jour détectée !"
+          echo "  Ancienne : ${{ steps.current.outputs.current_version }}"
+          echo "  Nouvelle : ${{ steps.latest.outputs.latest_version }}"
+
+          # Mise à jour du Dockerfile
+          sed -i 's|ARG BRSCAN4_VERSION=.*|ARG BRSCAN4_VERSION="${{ steps.latest.outputs.latest_version }}"|' Dockerfile
+
+          # Optionnel : mise à jour du label version dans Dockerfile
+          sed -i 's|org.opencontainers.image.version=.*|org.opencontainers.image.version="${{ steps.latest.outputs.latest_version }}"|' Dockerfile
+
+      - name: Commit & push if changed
+        if: steps.latest.outputs.latest_version != '' && steps.latest.outputs.latest_version != steps.current.outputs.current_version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          git add Dockerfile
+          git commit -m "chore: update brscan4 to ${{ steps.latest.outputs.latest_version }} (auto-detect)"
+
+          git push origin HEAD:master
+
+          echo "Commit poussé → nouvelle version taguée dans le repo."
