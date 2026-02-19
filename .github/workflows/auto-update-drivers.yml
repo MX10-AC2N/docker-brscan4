@@ -47,7 +47,7 @@ jobs:
             fi
 
             echo "────────────────────────────────────────"
-            echo "Traitement : $deb_file"
+            echo "Traitement du fichier : $deb_file"
 
             # Extraction fiable via dpkg-deb
             pkg_name=\( (dpkg-deb --show --showformat=' \){Package}' "$deb_file" 2>/dev/null || basename "$deb_file" | sed 's/-.*//')
@@ -55,7 +55,7 @@ jobs:
             arch=\( (dpkg-deb --show --showformat=' \){Architecture}' "$deb_file" 2>/dev/null || basename "$deb_file" | grep -oE '(amd64|all|i386)' || echo "amd64")
 
             if [ "$current_version" = "unknown" ]; then
-              echo "  Échec extraction version avec dpkg-deb → fallback sur nom de fichier"
+              echo "  Échec d'extraction de version via dpkg-deb → fallback sur nom de fichier"
               current_version=$(basename "$deb_file" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+-[0-9]+' || echo "unknown")
             fi
 
@@ -83,7 +83,7 @@ jobs:
                   "https://download.brother.com/welcome/dlf105204/"
                   "https://download.brother.com/welcome/dlf006649/"
                 )
-                candidates=("0.3.1-2" "0.3.2-0" "0.3.3-0" "0.3.4-0" "0.3.5-0")
+                candidates=("0.3.2-0" "0.3.3-0" "0.3.4-0" "0.3.5-0")
                 filename_pattern="brscan-skey-%s.${arch}.deb"
                 ;;
               brother-udev-rule-type1)
@@ -95,16 +95,18 @@ jobs:
                 filename_pattern="brother-udev-rule-type1-%s.${arch}.deb"
                 ;;
               *)
-                echo "  → Type de driver non géré → skip"
+                echo "  → Type de driver non géré dans le case → skip"
                 continue
                 ;;
             esac
 
-            # Recherche de version plus récente
+            # Recherche de version plus récente (arrêt à la première trouvée > actuelle)
             for candidate in "${candidates[@]}"; do
               for base_url in "${base_urls[@]}"; do
                 candidate_url="\( {base_url} \)(printf "$filename_pattern" "$candidate")"
+                echo "  Test URL : $candidate_url"
                 http_code=$(curl -s -o /dev/null -w "%{http_code}" "$candidate_url")
+                echo "    → HTTP code : $http_code"
                 if [ "$http_code" = "200" ]; then
                   if [ "$candidate" != "$current_version" ]; then
                     latest_version="$candidate"
@@ -124,7 +126,7 @@ jobs:
             if [ -n "$latest_version" ]; then
               cd drivers
               old_filename=$(basename "$deb_file")
-              rm -f "$old_filename"
+              rm -f "$old_filename" || true
               echo "  → Téléchargement : $latest_url"
               curl -fSL -O "$latest_url" || { echo "Échec téléchargement → abandon"; exit 1; }
               cd ..
