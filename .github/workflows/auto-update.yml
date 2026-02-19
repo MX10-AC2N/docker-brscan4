@@ -1,0 +1,202 @@
+name: 🤖 Auto-update Brother drivers (monthly)
+
+on:
+  schedule:
+    - cron: '0 5 1 * *'    # 1er du mois à 05:00 UTC
+  workflow_dispatch:        # Lancement manuel possible
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📖 Lecture des versions actuelles
+        id: current
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  📖 Versions actuellement en repo"
+          echo "════════════════════════════════════════"
+
+          BRSCAN4_CURRENT=$(cat BRSCAN4_VERSION 2>/dev/null | tr -d '[:space:]' || echo "0.0.0-0")
+          echo "  📦 brscan4     : ${BRSCAN4_CURRENT}"
+
+          SKEY_CURRENT=$(ls drivers/brscan-skey-*.deb 2>/dev/null | grep -oP 'brscan-skey-\K[\d.]+-\d+' | head -1 || echo "0.0.0-0")
+          echo "  📦 brscan-skey : ${SKEY_CURRENT}"
+
+          UDEV_CURRENT=$(ls drivers/brother-udev-rule-type1-*.deb 2>/dev/null | grep -oP 'type1-\K[\d.]+-\d+' | head -1 || echo "0.0.0-0")
+          echo "  📦 udev-rule   : ${UDEV_CURRENT}"
+          echo "════════════════════════════════════════"
+
+          echo "brscan4_current=${BRSCAN4_CURRENT}"   >> $GITHUB_OUTPUT
+          echo "skey_current=${SKEY_CURRENT}"         >> $GITHUB_OUTPUT
+          echo "udev_current=${UDEV_CURRENT}"         >> $GITHUB_OUTPUT
+
+      # ────────────────────────────────────────────────────────────
+      # brscan4 : détecte la version disponible sur les serveurs Brother
+      # On teste plusieurs numéros de miroir connus (dlf105200, 201, 203)
+      # ────────────────────────────────────────────────────────────
+      - name: 🔍 Détection de la dernière version brscan4
+        id: detect_brscan4
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  🔍 Recherche de la dernière version brscan4..."
+          echo "════════════════════════════════════════"
+
+          MIRRORS=(dlf105200 dlf105201 dlf105203)
+          # Versions connues à tester (du plus récent au plus ancien)
+          VERSIONS=(0.4.11-1 0.4.10-1 0.4.9-1)
+
+          FOUND_VERSION=""
+          FOUND_URL=""
+
+          for VERSION in "${VERSIONS[@]}"; do
+            for MIRROR in "${MIRRORS[@]}"; do
+              URL="https://download.brother.com/welcome/${MIRROR}/brscan4-${VERSION}.amd64.deb"
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${URL}")
+              if [ "${HTTP_CODE}" = "200" ]; then
+                FOUND_VERSION="${VERSION}"
+                FOUND_URL="${URL}"
+                echo "  ✅ Trouvé : brscan4-${VERSION} → ${URL}"
+                break 2
+              fi
+            done
+          done
+
+          if [ -z "${FOUND_VERSION}" ]; then
+            echo "  ⚠️  Aucune version brscan4 accessible — serveurs Brother injoignables ?"
+          else
+            echo "  📦 Dernière version disponible : ${FOUND_VERSION}"
+          fi
+          echo "════════════════════════════════════════"
+
+          echo "brscan4_latest=${FOUND_VERSION}"  >> $GITHUB_OUTPUT
+          echo "brscan4_url=${FOUND_URL}"         >> $GITHUB_OUTPUT
+
+      # ────────────────────────────────────────────────────────────
+      # brscan-skey : même logique
+      # ────────────────────────────────────────────────────────────
+      - name: 🔍 Détection de la dernière version brscan-skey
+        id: detect_skey
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  🔍 Recherche de la dernière version brscan-skey..."
+          echo "════════════════════════════════════════"
+
+          VERSIONS=(0.3.4-0 0.3.3-0 0.3.2-0)
+          MIRRORS=(dlf006652 dlf006653)
+
+          FOUND_VERSION=""
+          FOUND_URL=""
+
+          for VERSION in "${VERSIONS[@]}"; do
+            for MIRROR in "${MIRRORS[@]}"; do
+              URL="https://download.brother.com/welcome/${MIRROR}/brscan-skey-${VERSION}.amd64.deb"
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${URL}")
+              if [ "${HTTP_CODE}" = "200" ]; then
+                FOUND_VERSION="${VERSION}"
+                FOUND_URL="${URL}"
+                echo "  ✅ Trouvé : brscan-skey-${VERSION} → ${URL}"
+                break 2
+              fi
+            done
+          done
+
+          if [ -z "${FOUND_VERSION}" ]; then
+            echo "  ⚠️  Aucune version brscan-skey accessible."
+          else
+            echo "  📦 Dernière version disponible : ${FOUND_VERSION}"
+          fi
+          echo "════════════════════════════════════════"
+
+          echo "skey_latest=${FOUND_VERSION}"  >> $GITHUB_OUTPUT
+          echo "skey_url=${FOUND_URL}"         >> $GITHUB_OUTPUT
+
+      # ────────────────────────────────────────────────────────────
+      # Téléchargement des .deb si nouvelle version détectée
+      # ────────────────────────────────────────────────────────────
+      - name: 📥 Mise à jour des drivers si nécessaire
+        id: download
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  📥 Vérification des mises à jour"
+          echo "════════════════════════════════════════"
+
+          UPDATED=false
+
+          # --- brscan4 ---
+          BRSCAN4_LATEST="${{ steps.detect_brscan4.outputs.brscan4_latest }}"
+          BRSCAN4_CURRENT="${{ steps.current.outputs.brscan4_current }}"
+
+          if [ -n "${BRSCAN4_LATEST}" ] && [ "${BRSCAN4_LATEST}" != "${BRSCAN4_CURRENT}" ]; then
+            echo "  🆕 brscan4 : ${BRSCAN4_CURRENT} → ${BRSCAN4_LATEST}"
+            rm -f drivers/brscan4-*.deb
+            curl -fSL -o "drivers/brscan4-${BRSCAN4_LATEST}.amd64.deb" \
+                "${{ steps.detect_brscan4.outputs.brscan4_url }}"
+            echo "${BRSCAN4_LATEST}" > BRSCAN4_VERSION
+            echo "  ✅ brscan4 mis à jour"
+            UPDATED=true
+          else
+            echo "  ✔️  brscan4 déjà à jour (${BRSCAN4_CURRENT})"
+          fi
+
+          # --- brscan-skey ---
+          SKEY_LATEST="${{ steps.detect_skey.outputs.skey_latest }}"
+          SKEY_CURRENT="${{ steps.current.outputs.skey_current }}"
+
+          if [ -n "${SKEY_LATEST}" ] && [ "${SKEY_LATEST}" != "${SKEY_CURRENT}" ]; then
+            echo "  🆕 brscan-skey : ${SKEY_CURRENT} → ${SKEY_LATEST}"
+            rm -f drivers/brscan-skey-*.deb
+            curl -fSL -o "drivers/brscan-skey-${SKEY_LATEST}.amd64.deb" \
+                "${{ steps.detect_skey.outputs.skey_url }}"
+            echo "  ✅ brscan-skey mis à jour"
+            UPDATED=true
+          else
+            echo "  ✔️  brscan-skey déjà à jour (${SKEY_CURRENT})"
+          fi
+
+          echo "════════════════════════════════════════"
+          echo "updated=${UPDATED}" >> $GITHUB_OUTPUT
+
+      # ────────────────────────────────────────────────────────────
+      # Commit + tag + push si au moins un driver a changé
+      # Déclenche ensuite automatiquement le build-and-push
+      # ────────────────────────────────────────────────────────────
+      - name: 💾 Commit, tag et push si mis à jour
+        if: steps.download.outputs.updated == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add drivers/ BRSCAN4_VERSION
+
+          BRSCAN4_LATEST="${{ steps.detect_brscan4.outputs.brscan4_latest }}"
+          git commit -m "chore: 🤖 auto-update drivers → brscan4 ${BRSCAN4_LATEST} [skip ci]"
+
+          TAG="v${BRSCAN4_LATEST}"
+          # Évite les doublons de tag
+          git tag "${TAG}" 2>/dev/null || echo "  ⚠️  Tag ${TAG} existe déjà, ignoré."
+
+          git push origin HEAD:${{ github.ref_name || 'master' }}
+          git push origin "${TAG}" 2>/dev/null || true
+
+          echo "════════════════════════════════════════"
+          echo "  ✅ Commit + tag ${TAG} poussés"
+          echo "  ℹ️  Le workflow build-and-push doit"
+          echo "     être relancé manuellement si besoin"
+          echo "════════════════════════════════════════"
+
+      - name: ✔️ Aucune mise à jour nécessaire
+        if: steps.download.outputs.updated != 'true'
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  ✔️  Tous les drivers sont déjà à jour"
+          echo "  ℹ️  Aucun commit effectué."
+          echo "════════════════════════════════════════"
