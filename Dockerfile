@@ -1,16 +1,18 @@
 # syntax=docker/dockerfile:1
 
-# Étape builder : extrait le driver Brother depuis le .deb local
+# Étape builder : extrait les drivers Brother depuis les .deb locaux
 FROM debian:bookworm-slim AS builder
 
-ARG BRSCAN4_VERSION
-
-COPY drivers/brscan4-${BRSCAN4_VERSION}.amd64.deb /tmp/brscan4.deb
+COPY drivers/brscan4-*.amd64.deb              /tmp/brscan4.deb
+COPY drivers/brscan-skey-*.amd64.deb           /tmp/brscan-skey.deb
+COPY drivers/brother-udev-rule-type1-*.all.deb /tmp/brother-udev-rule.deb
 
 RUN set -eux && \
     mkdir -p /extract && \
-    dpkg-deb -x /tmp/brscan4.deb /extract && \
-    rm -f /tmp/brscan4.deb
+    dpkg-deb -x /tmp/brscan4.deb              /extract && \
+    dpkg-deb -x /tmp/brscan-skey.deb          /extract && \
+    dpkg-deb -x /tmp/brother-udev-rule.deb    /extract && \
+    rm -f /tmp/brscan4.deb /tmp/brscan-skey.deb /tmp/brother-udev-rule.deb
 
 # Image finale
 FROM debian:bookworm-slim
@@ -30,9 +32,10 @@ ENV \
     LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive
 
-# Copie les fichiers extraits du driver
+# Copie les fichiers extraits des drivers
 COPY --from=builder /extract/usr/ /usr/
 COPY --from=builder /extract/opt/ /opt/
+COPY --from=builder /extract/etc/ /etc/
 
 # Dépendances runtime minimales + nettoyage agressif
 RUN set -eux && \
