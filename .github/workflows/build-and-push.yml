@@ -1,7 +1,7 @@
 name: 🏗️ Build and 🚀 Push to GHCR
 
 on:
-  workflow_dispatch:              # Permet de lancer manuellement depuis l'interface Actions
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -9,30 +9,58 @@ jobs:
 
     permissions:
       contents: read
-      packages: write             # Obligatoire pour push sur GHCR
+      packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Read BRSCAN4 version
-        id: version
-        run: echo "version=$(cat BRSCAN4_VERSION)" >> $GITHUB_OUTPUT
+      - name: 📋 Vérification des drivers locaux
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  📂 Contenu du répertoire drivers/"
+          echo "════════════════════════════════════════"
+          if [ -d "drivers" ]; then
+            for f in drivers/*.deb; do
+              size=$(du -sh "$f" | cut -f1)
+              echo "  ✅  $(basename $f)  (${size})"
+            done
+          else
+            echo "  ❌ Répertoire drivers/ introuvable !"
+            exit 1
+          fi
+          echo "════════════════════════════════════════"
 
-      - name: Set up QEMU (pour multi-arch si besoin plus tard)
+      - name: 🔖 Lecture de la version BRSCAN4
+        id: version
+        run: |
+          VERSION=$(cat BRSCAN4_VERSION)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "════════════════════════════════════════"
+          echo "  📦 BRSCAN4_VERSION = ${VERSION}"
+          echo "  🔍 .deb attendu    = brscan4-${VERSION}.amd64.deb"
+          if [ -f "drivers/brscan4-${VERSION}.amd64.deb" ]; then
+            echo "  ✅ Fichier trouvé dans drivers/"
+          else
+            echo "  ❌ Fichier introuvable : drivers/brscan4-${VERSION}.amd64.deb"
+            exit 1
+          fi
+          echo "════════════════════════════════════════"
+
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
+      - name: 🔐 Connexion à GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: 🏷️ Extraction des métadonnées (tags & labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -45,13 +73,13 @@ jobs:
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
 
-      - name: Build and push Docker image
+      - name: 🐳 Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64      # Ton image est amd64 only
-          push: ${{ github.event_name != 'pull_request' }}   # Ne push pas sur PR
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -59,5 +87,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Image digest (pour debug)
-        run: echo "Image pushed → ${{ steps.meta.outputs.tags }}"
+      - name: 🎉 Résumé du build
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  ✅ Image buildée et pushée avec succès"
+          echo "════════════════════════════════════════"
+          echo "  📦 Version brscan4 : ${{ steps.version.outputs.version }}"
+          echo "  🏷️  Tags publiés :"
+          echo "${{ steps.meta.outputs.tags }}" | while read tag; do
+            echo "      → ${tag}"
+          done
+          echo "  🔗 Disponible sur :"
+          echo "      https://github.com/${{ github.repository }}/pkgs/container/$(basename ${{ github.repository }})"
+          echo "════════════════════════════════════════"
