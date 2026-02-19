@@ -1,50 +1,87 @@
-FROM ubuntu:20.04
-LABEL maintainer="MX10-AC2N"
+# syntax=docker/dockerfile:1
 
-# Set environment variables for your scanner
-ENV SCANNER_NAME="DCP-7060D"
-ENV SCANNER_MODEL="DCP-7060D"
-ENV SCANNER_IP_ADDRESS="192.168.1.200"
-ENV TZ="Paris/France"
+# Étape 1 : Builder - Télécharge et extrait le .deb officiel Brother
+FROM --platform=linux/amd64 debian:bookworm-slim AS builder
 
-# Set UID and GIDs for scanner user and file outputs
-ENV PUID="1000"
-ENV PGID="1000"
+ARG BRSCAN4_VERSION="0.4.11-1"
+ARG BRSCAN4_URL="https://download.brother.com/welcome/dlf105200/brscan4-${BRSCAN4_VERSION}.amd64.deb"
 
-ENV LC_ALL="C.UTF-8" LANG="C.UTF-8" 
-ENV DEBIAN_FRONTEND="noninteractive"
+RUN set -eux; \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl; \
+    mkdir -p /extract; \
+    curl -fSL -o /tmp/brscan4.deb "${BRSCAN4_URL}"; \
+    dpkg-deb -x /tmp/brscan4.deb /extract; \
+    rm -f /tmp/brscan4.deb; \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*;
 
-# Debug mode
-ENV INTR="true"
+# Étape 2 : Image finale légère
+FROM --platform=linux/amd64 debian:bookworm-slim
 
-RUN apt-get -y update && apt-get install -y \ 
-	sane \
-	sane-utils \
-	libusb-0.1 \
-	libtiff-tools \
-	&& apt-get -y clean && rm -rf /var/lib/apt/lists/*
+LABEL maintainer="MX10-AC2N" \
+      org.opencontainers.image.source="https://github.com/MX10-AC2N/docker-brscan4" \
+      org.opencontainers.image.description="Lightweight Brother brscan4 SANE backend (amd64)" \
+      org.opencontainers.image.version="0.4.11"
 
-COPY drivers /opt/brother/docker_skey/drivers
-RUN dpkg -i /opt/brother/docker_skey/drivers/*.deb
+ENV \
+    SCANNER_NAME="BrotherScanner" \
+    SCANNER_MODEL="" \
+    SCANNER_IP_ADDRESS="" \
+    TZ="Europe/Paris" \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive
 
-COPY scripts /opt/brother/docker_skey/scripts
+# Copie les fichiers essentiels du driver Brother
+COPY --from=builder /extract/usr/ /usr/
+COPY --from=builder /extract/opt/ /opt/
 
-COPY config /opt/brother/docker_skey/config
+# Installe les dépendances runtime minimales
+RUN set -eux; \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        sane-utils \
+        libusb-1.0-0 \
+        libtiff6 \
+        ca-certificates \
+        tzdata \
+    && \
+    # Nettoyage ultra-agressif
+    apt-get autoremove -y --purge && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/* \
+    && \
+    # Répertoires et liens symboliques (adapte si tu as des configs custom pour brscan-skey)
+    mkdir -p /etc/opt/brother/scanner/brscan-skey \
+             /opt/brother/scanner/brscan-skey \
+             /scans \
+    && \
+    ln -sfn /opt/brother/docker_skey/config/brscan-skey.config \
+            /etc/opt/brother/scanner/brscan-skey/brscan-skey.config 2>/dev/null || true
 
-RUN ln -sfn /opt/brother/docker_skey/config/brscan-skey.config /etc/opt/brother/scanner/brscan-skey/brscan-skey.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscan_mail.config /etc/opt/brother/scanner/brscan-skey/brscan_mail.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantoemail.config /etc/opt/brother/scanner/brscan-skey/scantoemail.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantofile.config /etc/opt/brother/scanner/brscan-skey/scantofile.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantoimage.config /etc/opt/brother/scanner/brscan-skey/scantoimage.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantoocr.config /etc/opt/brother/scanner/brscan-skey/scantoocr.config
+# Copie tes dossiers custom (scripts, config, drivers si tu en as)
+# → Crée ces dossiers dans ton repo si besoin, sinon supprime les lignes COPY
+COPY scripts/      /opt/brother/docker_skey/scripts/
+COPY config/       /opt/brother/docker_skey/config/
+# COPY drivers/    /opt/brother/docker_skey/drivers/  # optionnel
 
-RUN ln -sfn /opt/brother/docker_skey/config/brscan-skey.config /opt/brother/scanner/brscan-skey/brscan-skey.config && \
-	ln -sfn /opt/brother/docker_skey/config/brscan_mail.config /opt/brother/scanner/brscan-skey/brscan_mail.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantoemail.config /opt/brother/scanner/brscan-skey/scantoemail.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantofile.config /opt/brother/scanner/brscan-skey/scantofile.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantoimage.config /opt/brother/scanner/brscan-skey/scantoimage.config && \
-	ln -sfn /opt/brother/docker_skey/config/scantoocr.config /opt/brother/scanner/brscan-skey/scantoocr.config
+# Création d'un utilisateur non-root (recommandé pour la sécurité)
+ARG PUID=1000
+ARG PGID=1000
+RUN if [ "${PUID}" != "0" ]; then \
+        groupadd -g "${PGID}" scanner && \
+        useradd -u "\( {PUID}" -g " \){PGID}" -m -s /bin/false scanner; \
+    fi
 
-RUN mkdir -p /scans
+# Copie l'entrypoint qui valide les vars et configure le scanner
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-CMD /opt/brother/docker_skey/scripts/start.sh
+VOLUME ["/scans"]
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD sane-find-scanner >/dev/null && echo "OK" || exit 1
