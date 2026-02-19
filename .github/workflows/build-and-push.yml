@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     permissions:
-      contents: read
+      contents: write        # Nécessaire pour commit le README
       packages: write
 
     steps:
@@ -26,7 +26,6 @@ jobs:
             exit 1
           fi
 
-          # Fichiers .deb obligatoires
           REQUIRED=(
             "brscan4-*.amd64.deb"
             "brscan-skey-*.amd64.deb"
@@ -113,12 +112,62 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: 📏 Récupération du poids de l'image
+        id: image_size
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  📏 Récupération du poids de l'image..."
+          echo "════════════════════════════════════════"
+
+          # Récupère la taille compressée depuis l'API GHCR
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME=$(basename "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
+          TOKEN=$(echo "${{ secrets.GITHUB_TOKEN }}" | base64)
+
+          # Taille locale de l'image (non compressée)
+          docker pull ghcr.io/${REPO_LC}:latest
+          SIZE_BYTES=$(docker image inspect ghcr.io/${REPO_LC}:latest --format='{{.Size}}')
+          SIZE_MB=$(echo "scale=1; ${SIZE_BYTES} / 1048576" | bc)
+
+          echo "  📦 Taille image : ${SIZE_MB} MB"
+          echo "size_mb=${SIZE_MB}" >> $GITHUB_OUTPUT
+          echo "════════════════════════════════════════"
+
+      - name: 📝 Mise à jour du badge image size dans README.md
+        run: |
+          SIZE="${{ steps.image_size.outputs.size_mb }}"
+          BADGE="![Image Size](https://img.shields.io/badge/image%20size-${SIZE}%20MB-blue?logo=docker)"
+
+          # Remplace la ligne du badge si elle existe, sinon l'insère après la 1ère ligne de badges
+          if grep -q "img.shields.io/badge/image%20size" README.md; then
+            sed -i "s|!\[Image Size\](https://img.shields.io/badge/image%20size-[^)]*)|${BADGE}|g" README.md
+            echo "  ✅ Badge image size mis à jour → ${SIZE} MB"
+          else
+            sed -i "s|^\(\[!\[🏗️ Build.*\)\$|\1\n${BADGE}|" README.md
+            echo "  ✅ Badge image size ajouté → ${SIZE} MB"
+          fi
+
+      - name: 💾 Commit du README mis à jour
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "  ℹ️  Aucun changement dans README.md, pas de commit."
+          else
+            git commit -m "docs: 📏 mise à jour du badge image size → ${{ steps.image_size.outputs.size_mb }} MB [skip ci]"
+            git push
+            echo "  ✅ README.md committé et pushé."
+          fi
+
       - name: 🎉 Résumé du build
         run: |
           echo "════════════════════════════════════════"
           echo "  ✅ Image buildée et pushée avec succès"
           echo "════════════════════════════════════════"
-          echo "  📦 Version brscan4 : ${{ steps.version.outputs.version }}"
+          echo "  📦 Version brscan4  : ${{ steps.version.outputs.version }}"
+          echo "  📏 Poids de l'image : ${{ steps.image_size.outputs.size_mb }} MB"
           echo "  🏷️  Tags publiés :"
           echo "${{ steps.meta.outputs.tags }}" | while read tag; do
             echo "      → ${tag}"
