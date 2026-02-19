@@ -1,6 +1,6 @@
 # docker-brscan4
 
-![Docker Image Size](https://img.shields.io/docker/image-size/mx10ac2n/docker-brscan4/latest?label=amd64%20size)
+[![Dernière mise à jour des drivers](https://img.shields.io/github/v/tag/MX10-AC2N/docker-brscan4?label=driver%20update&color=success)](https://github.com/MX10-AC2N/docker-brscan4/tags)
 
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/MX10-AC2N/docker-brscan4/auto-update-brscan4.yml?label=monthly%20update%20check)
 
