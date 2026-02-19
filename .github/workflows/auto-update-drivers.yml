@@ -1,4 +1,4 @@
-name: Auto-update Brother drivers (monthly check)
+name: 🤖Auto-update Brother drivers (monthly check)
 
 on:
   schedule:
