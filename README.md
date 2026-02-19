@@ -2,9 +2,10 @@
 
 [![Dernière mise à jour des drivers](https://img.shields.io/github/v/tag/MX10-AC2N/docker-brscan4?label=driver%20update&color=success)](https://github.com/MX10-AC2N/docker-brscan4/tags) ![GitHub WorkflowsStatus](https://img.shields.io/github/actions/workflow/status/MX10-AC2N/docker-brscan4/auto-update-brscan4.yml?label=monthly%20update%20check)
 
-[![🏗️ Build and 🚀 Push to GHCR](https://github.com/MX10-AC2N/docker-brscan4/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/MX10-AC2N/docker-brscan4/actions/workflows/build-and-push.yml)
+[![🏗️ Build and 🚀 Push to GHCR](https://github.com/MX10-AC2N/docker-brscan4/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/MX10-AC2N/docker-brscan4/actions/workflows/build-and-push.yml)
+![Image Size](https://img.shields.io/badge/image%20size--%20MB-blue?logo=docker)
 
-Container Docker léger (~100 Mo) pour le backend SANE **brscan4** de Brother (scanner réseau).
+Container Docker léger pour le backend SANE **brscan4** de Brother (scanner réseau).
 
 Supporte les modèles compatibles brscan4 (ex. MFC-L2700DW, DCP-L2540DW, MFC-J5620DW, etc.).
 
