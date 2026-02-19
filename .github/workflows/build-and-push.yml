@@ -1,4 +1,4 @@
-name: 🏗️ Build and 🚀 Push to GHCR
+name: 🏗️ Build and 🚀 Push to GHCR
 
 on:
   workflow_dispatch:              # Permet de lancer manuellement depuis l'interface Actions
@@ -14,6 +14,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Read BRSCAN4 version
+        id: version
+        run: echo "version=$(cat BRSCAN4_VERSION)" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU (pour multi-arch si besoin plus tard)
         uses: docker/setup-qemu-action@v3
@@ -50,6 +54,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}   # Ne push pas sur PR
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BRSCAN4_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
