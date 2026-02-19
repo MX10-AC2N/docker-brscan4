@@ -1,8 +1,8 @@
 # docker-brscan4
 
 [![Dernière mise à jour des drivers](https://img.shields.io/github/v/tag/MX10-AC2N/docker-brscan4?label=driver%20update&color=success)](https://github.com/MX10-AC2N/docker-brscan4/tags)
-
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/MX10-AC2N/docker-brscan4/auto-update-brscan4.yml?label=monthly%20update%20check)
+[![🏗️ Build and 🚀 Push to GHCR](https://github.com/MX10-AC2N/docker-brscan4/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/MX10-AC2N/docker-brscan4/actions/workflows/build-and-push.yml)
+![GitHub WorkflowsStatus](https://img.shields.io/github/actions/workflow/status/MX10-AC2N/docker-brscan4/auto-update-brscan4.yml?label=monthly%20update%20check)
 
 Container Docker léger (~100 Mo) pour le backend SANE **brscan4** de Brother (scanner réseau).
 
