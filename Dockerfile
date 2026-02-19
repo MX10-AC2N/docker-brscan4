@@ -3,15 +3,17 @@
 # Étape builder : extrait les drivers Brother depuis les .deb locaux
 FROM debian:bookworm-slim AS builder
 
-COPY drivers/brscan4-*.amd64.deb              /tmp/brscan4.deb
-COPY drivers/brscan-skey-*.amd64.deb           /tmp/brscan-skey.deb
-COPY drivers/brother-udev-rule-type1-*.all.deb /tmp/brother-udev-rule.deb
+ARG BRSCAN4_VERSION
+
+COPY drivers/brscan4-${BRSCAN4_VERSION}.amd64.deb              /tmp/brscan4.deb
+COPY drivers/brscan-skey-*.amd64.deb                    /tmp/brscan-skey.deb
+COPY drivers/brother-udev-rule-type1-*.all.deb          /tmp/brother-udev-rule.deb
 
 RUN set -eux && \
     mkdir -p /extract && \
-    dpkg-deb -x /tmp/brscan4.deb              /extract && \
-    dpkg-deb -x /tmp/brscan-skey.deb          /extract && \
-    dpkg-deb -x /tmp/brother-udev-rule.deb    /extract && \
+    dpkg-deb -x /tmp/brscan4.deb           /extract && \
+    dpkg-deb -x /tmp/brscan-skey.deb       /extract && \
+    dpkg-deb -x /tmp/brother-udev-rule.deb /extract && \
     rm -f /tmp/brscan4.deb /tmp/brscan-skey.deb /tmp/brother-udev-rule.deb
 
 # Image finale
@@ -51,7 +53,6 @@ RUN set -eux && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/* /var/tmp/* \
     && \
-    # Création des répertoires et liens symboliques
     mkdir -p /etc/opt/brother/scanner/brscan-skey \
              /opt/brother/scanner/brscan-skey \
              /scans \
@@ -67,8 +68,8 @@ COPY config/       /opt/brother/docker_skey/config/
 ARG PUID=1000
 ARG PGID=1000
 RUN if [ "${PUID}" != "0" ]; then \
-        getent group  scanner >/dev/null || groupadd -g "${PGID}" scanner; \
-        getent passwd scanner >/dev/null || useradd -u "${PUID}" -g "${PGID}" -m -s /bin/false scanner; \
+        getent group scanner >/dev/null 2>&1 || groupadd -g "${PGID}" scanner; \
+        getent passwd scanner >/dev/null 2>&1 || useradd -u "${PUID}" -g scanner -m -s /bin/false scanner; \
     fi
 
 # Copie l'entrypoint
