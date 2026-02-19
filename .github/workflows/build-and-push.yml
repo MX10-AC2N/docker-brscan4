@@ -20,15 +20,41 @@ jobs:
           echo "════════════════════════════════════════"
           echo "  📂 Contenu du répertoire drivers/"
           echo "════════════════════════════════════════"
-          if [ -d "drivers" ]; then
-            for f in drivers/*.deb; do
-              size=$(du -sh "$f" | cut -f1)
-              echo "  ✅  $(basename $f)  (${size})"
-            done
-          else
+
+          if [ ! -d "drivers" ]; then
             echo "  ❌ Répertoire drivers/ introuvable !"
             exit 1
           fi
+
+          # Fichiers .deb obligatoires
+          REQUIRED=(
+            "brscan4-*.amd64.deb"
+            "brscan-skey-*.amd64.deb"
+            "brother-udev-rule-*.all.deb"
+          )
+
+          ALL_OK=true
+          for pattern in "${REQUIRED[@]}"; do
+            matches=(drivers/${pattern})
+            if [ -e "${matches[0]}" ]; then
+              for f in "${matches[@]}"; do
+                size=$(du -sh "$f" | cut -f1)
+                echo "  ✅  $(basename $f)  (${size})"
+              done
+            else
+              echo "  ❌  Aucun fichier trouvé pour le pattern : ${pattern}"
+              ALL_OK=false
+            fi
+          done
+
+          echo "════════════════════════════════════════"
+
+          if [ "$ALL_OK" = false ]; then
+            echo "  💥 Des drivers obligatoires sont manquants, build annulé."
+            exit 1
+          fi
+
+          echo "  ✅ Tous les drivers requis sont présents."
           echo "════════════════════════════════════════"
 
       - name: 🔖 Lecture de la version BRSCAN4
