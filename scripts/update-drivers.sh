@@ -3,23 +3,23 @@
 set -euo pipefail
 
 # update-drivers.sh
-# Recherche et met à jour les .deb Brother dans le dossier drivers/
-# Usage: ./scripts/update-drivers.sh [--dry-run] [--verbose]
+# Met à jour les .deb Brother dans drivers/ si version plus récente trouvée
 
 DRY_RUN=false
 VERBOSE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --dry-run)  DRY_RUN=true;  shift ;;
-        --verbose)  VERBOSE=true;  shift ;;
-        *) echo "Option inconnue : $1"; exit 1 ;;
+        --dry-run)  DRY_RUN=true ; shift ;;
+        --verbose)  VERBOSE=true  ; shift ;;
+        *) echo "Option inconnue : $1" ; exit 1 ;;
     esac
 done
 
 cd "$(dirname "$0")/.." || exit 1
 
 DRIVERS_DIR="drivers"
+
 if [ ! -d "$DRIVERS_DIR" ]; then
     echo "Dossier $DRIVERS_DIR introuvable"
     exit 1
@@ -60,7 +60,12 @@ for deb_file in "$DRIVERS_DIR"/*.deb; do
                 "https://download.brother.com/welcome/dlf105203/"
                 "https://download.brother.com/welcome/dlf006645/"
             )
-            candidates=("0.4.11-1" "0.4.12-1" "0.4.13-1" "0.5.0-1")
+            candidates=(
+                "0.4.11-1"
+                "0.4.12-1"
+                "0.4.13-1"
+                "0.5.0-1"
+            )
             filename_pattern="brscan4-%s.${arch}.deb"
             ;;
         brscan-skey)
@@ -69,7 +74,12 @@ for deb_file in "$DRIVERS_DIR"/*.deb; do
                 "https://download.brother.com/welcome/dlf105204/"
                 "https://download.brother.com/welcome/dlf006649/"
             )
-            candidates=("0.3.2-0" "0.3.3-0" "0.3.4-0" "0.3.5-0")
+            candidates=(
+                "0.3.2-0"
+                "0.3.3-0"
+                "0.3.4-0"
+                "0.3.5-0"
+            )
             filename_pattern="brscan-skey-%s.${arch}.deb"
             ;;
         brother-udev-rule-type1)
@@ -77,7 +87,11 @@ for deb_file in "$DRIVERS_DIR"/*.deb; do
                 "https://download.brother.com/welcome/dlf006893/"
                 "https://download.brother.com/welcome/dlf006894/"
             )
-            candidates=("1.0.2-0" "1.0.3-0" "1.1.0-0")
+            candidates=(
+                "1.0.2-0"
+                "1.0.3-0"
+                "1.1.0-0"
+            )
             filename_pattern="brother-udev-rule-type1-%s.${arch}.deb"
             ;;
         *)
