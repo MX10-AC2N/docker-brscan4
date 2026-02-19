@@ -2,7 +2,7 @@ name: Auto-update brscan4 version
 
 on:
   schedule:
-    - cron: '0 5 * * 0'          # tous les dimanches à 5h UTC (\~6h France)
+    - cron: '0 5 1 * 0'          # tous les 1er jour du mois à 5h UTC (\~6h France)
   workflow_dispatch:             # permet de lancer manuellement depuis l'interface GitHub
 
 jobs:
